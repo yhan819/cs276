@@ -5,3 +5,6 @@
 
 *.pyc
 ._*
+lang_model
+queries.txt
+
