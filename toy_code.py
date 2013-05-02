@@ -51,3 +51,5 @@ if __name__ == '__main__':
   print('Toy code')
   walk_pairs()
   print( count_ints() )
+  data = unserialize_data("lang_model")
+  print data

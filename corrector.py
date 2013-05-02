@@ -29,3 +29,7 @@ def read_query_data():
 
 if __name__ == '__main__':
   print(sys.argv)
+  lm = sys.argv[1]
+  qry_file = sys.argv[2]
+  if lm == "uniform":
+    pass

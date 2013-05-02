@@ -3,6 +3,14 @@ import sys
 import os.path
 #import gzip
 from glob import iglob
+import marshal
+
+def serialize_data(data, fname):
+  """
+  Writes `data` to a file named `fname`
+  """
+  with open(fname, 'wb') as f:
+    marshal.dump(data, f)
 
 def scan_corpus(training_corpus_loc):
   """
@@ -35,6 +43,12 @@ def scan_corpus(training_corpus_loc):
         num_lines += 1
       print >> sys.stderr, 'Number of lines in ' + block_fname + ' is ' + str(num_lines)
       print >> sys.stderr, 'num terms so far ' + str(term_count)
+  # serializable data to be saved
+  data = []
+  data.append(term_count)
+  data.append(uni_dict)
+  data.append(bi_dict)
+  serialize_data(data, "lang_model")
 
 def read_edit1s(edit1s_loc):
   """
