@@ -12,6 +12,26 @@ def serialize_data(data, fname):
   with open(fname, 'wb') as f:
     marshal.dump(data, f)
 
+def find_difference(misspell, correct):
+  length = min(len(misspell), len(correct))
+  index = 0
+  diff = False
+  for i in range(0, length):
+    if misspell[i] != correct[i]: 
+      diff = True
+      break
+    index = index + 1
+  prev = '$'
+  if index != 0:
+    prev = misspell[index - 1]
+  if diff:
+    return (misspell[index], correct[index], prev, index)
+  else:
+    if len(misspell) > len(correct):
+      return (misspell[index], '$', prev, index)
+    else:
+      return ('$', correct[index], prev, index)
+
 def scan_corpus(training_corpus_loc):
   """
   Scans through the training corpus and counts how many lines of text there are
@@ -55,11 +75,55 @@ def read_edit1s(edit1s_loc):
   Returns the edit1s data
   It's a list of tuples, structured as [ .. , (misspelled query, correct query), .. ]
   """
+  uniletters_count = {}
+  biletters_count = {}
+  edit_map = {}
   edit1s = []
   with open(edit1s_loc) as f:
     # the .rstrip() is needed to remove the \n that is stupidly included in the line
     edit1s = [ line.rstrip().split('\t') for line in f if line.rstrip() ]
-  return edit1s
+    for x in range(0, len(edit1s)):
+      misspell = edit1s[x][0]
+      correct = edit1s[x][1]
+      for i in range(0, len(correct)):
+        if correct[i] in uniletters_count.keys():
+          uniletters_count[correct[i]] = uniletters_count[correct[i]] + 1
+        else:
+          uniletters_count[correct[i]] = 1 
+        if i != len(correct) -1:
+          if correct[i:i+2] in biletters_count.keys():
+            biletters_count[correct[i:i+2]] = biletters_count[correct[i:i+2]] + 1
+          else:
+            biletters_count[correct[i:i+2]] = 1
+      val = ("", '', '')   
+      if (misspell != correct): 
+        diff = find_difference(misspell, correct)
+        if len(misspell) != len(correct):
+          # INSERT
+          if len(misspell)+1 == len(correct):
+            val = ("INS", diff[1], diff[2]) 
+          # DELETE
+          elif len(misspell) == len(correct)+1:
+            val = ("DEL", diff[0], diff[2])
+        else:
+          # SUBSTITUTE
+          if misspell[0:diff[3]]+diff[1]+misspell[diff[3]+1:] == correct:
+            val = ("SUBS", diff[0], diff[1])
+          # TRANSPOSE
+          elif misspell[0:diff[3]]+misspell[diff[3]+1]+misspell[diff[3]] == correct:
+            val = ("TRANS", diff[0], diff[1])
+      if val in edit_map.keys():
+        edit_map[val] = edit_map[val] + 1
+      else:
+        edit_map[val] = 1
+  
+  # serializable data to be saved
+  data = []
+  data.append(uniletters_count)
+  data.append(biletters_count)
+  data.append(edit_map)
+  serialize_data(data, "edit1s_model")
+
 
 
 if __name__ == '__main__':
@@ -68,11 +132,11 @@ if __name__ == '__main__':
     edit1s_loc = sys.argv[2]
     corpus_loc = sys.argv[1]
     scan_corpus(corpus_loc)
-    edits_l = read_edit1s(edit1s_loc)
+    read_edit1s(edit1s_loc)
   elif len(sys.argv) == 4:
     edit1s_loc = sys.argv[3]
     corpus_loc = sys.argv[2]
     scan_corpus(corpus_loc)
-    edits_l = read_edit1s(edit1s_loc)
+    read_edit1s(edit1s_loc)
   else:
     print >> sys.stderr, 'incorrect usage'
