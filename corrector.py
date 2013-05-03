@@ -46,23 +46,29 @@ def read_query_data(qry_file):
 def get_1edit_word(data, word):
   uni_dict = data[1]
   ans = []
-  ans.append(word)
+  ans.append((word,""))
   
   for i in range(0,len(word)):
     #insertion
     for a in alphabet:
       ins = word[0:i] + a + word[i:]
-      ans.append(ins)
+      if i-1 < 0:
+        ans.append((ins,"del$" + a))
+      else:
+        ans.append((ins,"del" + word[i-1] + a))
       #substitution
       if a != word[i]:
         subs = word[0:i] + a + word[i+1:]
-        ans.append(subs) 
+        ans.append((subs, "sub" + a + word[i])) 
     #deletion
     dele = word[0:i] + word[i+1:]
-    ans.append(dele)
+    if i-1<0:
+      ans.append((dele,"ins$" + word[0]))
+    else:
+      ans.append((dele,"ins" + word[i-1] + word[i]))
     if i < len(word) - 1:
       trans = word[0:i] + word[i+1] + word[i] + word[i+1:]
-      ans.append(trans)
+      ans.append((trans,"trans" + word[i+1] + word[i]))
   
   return ans
 
@@ -71,12 +77,11 @@ def generate_cand(data, query):
   uni_dict = data[1]
   bi_dict = data[2]
   ans = get_1edit_word(data, query)
-  print >> sys.stderr, "len " + str(len(ans))
   
   rst = []
   one_wrong = []
   for s in ans:
-    words = s.split()
+    words = s[0].split()
     add = True
     num_wrong = 0
     for w in words:
@@ -84,19 +89,22 @@ def generate_cand(data, query):
         num_wrong += 1
         add = False
     if add:
-      rst.append((s,1))
+      rst.append((s[0],[s[1]]))
     if num_wrong == 1:
       one_wrong.append(s)
+  print >> sys.stderr, "len " + str(len(rst))
+  print >> sys.stderr, "len " + str(len(one_wrong))
   if len(rst) < 10:
     for o in one_wrong:
-      new_r = get_1edit_word(data, o)
-    for n in new_r:
-      words = s.split()
-      add = True
-      for w in words:
-        add = False
-      if add:
-        rst.append((n,2))
+      new_r = get_1edit_word(data, o[0])
+      for n in new_r:
+        words = n[0].split()
+        add = True
+        for w in words:
+          if w not in uni_dict:
+            add = False
+        if add:
+          rst.append((n[0],[o[1],n[1]]))
 
   return rst
 
@@ -119,50 +127,68 @@ def get_pq(data, candidate):
 
 def get_prq_uniform(cand, query, d):
   if cand == query:
-    return math.log(pqisr)
+    return len(cand) * math.log(pqisr)
   else:
     return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
+
+def get_prq_empirical(cand, query, d):
+  if cand == query:
+    return len(cand) * math.log(pqisr)
+  else:
+    #return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
+    return len(d) * math.log(pe1)
 
 def get_best_cand(data, query, candidates, uniform):
   num_term = data[0]
   uni_dict = data[1]
   bi_dict = data[2]
   result = query
+
+  if not uniform:
+    # load more data
+    pass
   
   max_score = -99999
   for c in candidates:
     #print >> sys.stderr, c
     if uniform:
-      prq = get_prq_uniform(c[0], query, c[1])
-      pq = get_pq(data, c[0])
-      if pq == 0:
-        score = 0
-      else:
-        score = prq + mu * pq
-      if score > max_score:
-        max_score = score
-        result = c[0]
+      prq = get_prq_uniform(c[0], query, len(c[1]))
+    else:
+      prq = get_prq_empirical(c[0], query, c[1])
+      pass
+    pq = get_pq(data, c[0])
+    if pq == 0:
+      score = 0
+    else:
+      score = prq + mu * pq
+    if score > max_score:
+      max_score = score
+      result = c[0]
       #print score
+      
   return result
   
 
-def correct_uniform(data, queries, gold, google):
+def correct_uniform(data, queries, gold, google, isUniform):
   num_term = data[0]
   uni_dict = data[1]
   bi_dict = data[2]
   num_cor = 0
-  
+  num_gc = 0
   for i in range(0, len(queries)):
     print >> sys.stderr, i
     candidates = generate_cand(data, queries[i])   
-    cand = get_best_cand(data, queries[i], candidates, True)
+    cand = get_best_cand(data, queries[i], candidates, isUniform)
     print >> sys.stdout, cand
     if cand == gold[i]:
       num_cor += 1
       print >> sys.stderr, "correct"
+    if cand == google[i]:
+      num_gc += 1
   
   print >> sys.stderr, num_cor
   print >> sys.stderr, float(num_cor) / len(gold)
+  print >> sys.stderr, "google : " + str(float(num_gc) / len(gold))
 
 if __name__ == '__main__':
   print(sys.argv)
@@ -172,11 +198,16 @@ if __name__ == '__main__':
   (queries, gold, google) = read_query_data(qry_file)
   print >> sys.stderr, "read query data"
 
+  data = unserialize_data("lang_model")
   if lm == "uniform":
-    data = unserialize_data("lang_model")
     
-    correct_uniform(data, queries, gold, google)   
+    correct_uniform(data, queries, gold, google, True)   
     
     print >> sys.stderr, len(queries)
+  elif lm == "empirical":
+    '''
+    add more to data
+    '''
+    correct_empirical(data, queries, gold, google, False)
     
 

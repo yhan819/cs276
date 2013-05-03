@@ -61,12 +61,18 @@ def read_edit1s(edit1s_loc):
     edit1s = [ line.rstrip().split('\t') for line in f if line.rstrip() ]
   return edit1s
 
+
 if __name__ == '__main__':
   print(sys.argv)
   if len(sys.argv) == 3:
     edit1s_loc = sys.argv[2]
     corpus_loc = sys.argv[1]
     scan_corpus(corpus_loc)
-    read_edit1s(edit1s_loc)
+    edits_l = read_edit1s(edit1s_loc)
+  elif len(sys.argv) == 4:
+    edit1s_loc = sys.argv[3]
+    corpus_loc = sys.argv[2]
+    scan_corpus(corpus_loc)
+    edits_l = read_edit1s(edit1s_loc)
   else:
-    print >> sys.stderr, 'extra credit not implemented'
+    print >> sys.stderr, 'incorrect usage'
