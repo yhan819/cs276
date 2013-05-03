@@ -11,12 +11,12 @@ alphabet = "abcdefghijklmnopqrstuvwxyz0123546789&$+_' "
 
 #assumed probability of typo in uniform edit
 pe1 = 0.01
-pqisr = 0.95
+pqisr = 0.90
 #interpolation lambda
 lamb = 0.2
 mu = 1
 
-lenless = 0
+logzero = 0.01
 
 def unserialize_data(fname):
   with open(fname, 'rb') as f:
@@ -108,8 +108,6 @@ def generate_cand(data, query):
       rst.append((s[0],[s[1]]))
     if num_wrong == 1:
       one_wrong.append(s)
-  print >> sys.stderr, "len " + str(len(rst))
-  print >> sys.stderr, "len " + str(len(one_wrong))
   if len(rst) < 10:
     for o in one_wrong:
       new_r = get_1edit_word(data, o[0])
@@ -166,37 +164,37 @@ def get_prq_empirical(cand, query, edit, data):
       elif e[0] == "DEL":
         if e in edits:
           score += math.log(edits[e]+1)   
-          score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+          score -= math.log(bilet_cnt[e[1]+e[2]] + 1)
         else:
-          score += math.log(0.01)
+          score += math.log(logzero)
           if e[1]+e[2] not in bilet_cnt:
             score -= math.log(1 + len(alphabet) * len(alphabet))
           else:  
-            score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+            score -= math.log(bilet_cnt[e[1]+e[2]] + 1)
       elif e[0] == "INS":
         if e in edits:
           score += math.log(edits[e]+1)   
           score -= math.log(unilet_cnt[e[1]] * len(alphabet))
         else:
-          score += math.log(0.01)
+          score += math.log(logzero)
           score -= math.log(unilet_cnt[e[1]] * len(alphabet))
       elif e[0] == "SUBS":
         if e in edits:
           score += math.log(edits[e]+1)   
           score -= math.log(unilet_cnt[e[1]] * len(alphabet))
         else:
-          score += math.log(0.01)
+          score += math.log(logzero)
           score -= math.log(unilet_cnt[e[1]] * len(alphabet))
       elif e[0] == "TRANS":
         if e in edits:
           score += math.log(edits[e]+1)   
-          score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+          score -= math.log(bilet_cnt[e[1]+e[2]] + 1)
         else:
-          score += math.log(0.01)
+          score += math.log(logzero)
           if e[1]+e[2] not in bilet_cnt:
             score -= math.log(1 + len(alphabet) * len(alphabet))
           else:  
-            score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+            score -= math.log(bilet_cnt[e[1]+e[2]] + 1)
         
     #return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
     return score
@@ -209,7 +207,6 @@ def get_best_cand(data, query, candidates, uniform):
 
   max_score = -99999
   for c in candidates:
-    #print >> sys.stderr, c
     if uniform:
       prq = get_prq_uniform(c[0], query, len(c[1]))
     else:
@@ -219,13 +216,9 @@ def get_best_cand(data, query, candidates, uniform):
       score = 0
     else:
       score = prq + mu * pq
-    print >> sys.stderr, c
-    print >> sys.stderr, str(score) + " " + str(prq)
     if score > max_score:
-      print >> sys.stderr, "MAX:"
       max_score = score
       result = c[0]
-      #print score
       
   return result
   
@@ -249,7 +242,6 @@ def correct_queries(data, queries, gold, google, isUniform):
   
   print >> sys.stderr, num_cor
   print >> sys.stderr, float(num_cor) / len(gold)
-  print >> sys.stderr, "google : " + str(float(num_gc) / len(gold))
 
 if __name__ == '__main__':
   print(sys.argv)

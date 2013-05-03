@@ -179,7 +179,7 @@ def ensure_dir(d):
         
 def getFiles(tempoutfile):
     pathq = 'http://www.stanford.edu/~shuihu/spelling_correction';
-    filenames = ['queries.txt', 'google.txt', 'gold.txt']    
+    filenames = ['queries.txt']    
 
     ensure_dir(tempoutfile+'/test');
     
@@ -213,7 +213,6 @@ def output(partIdx):
   stats = {}
   stats['USERIDS']= peopleStr  
   stats['TIMESUBMITTED'] = str(datetime.datetime.now());
-  stats['gold'] = open(tempoutfile + '/test/gold.txt').read().splitlines()
   
   if partIdx == 0:
       print 'Running Uniform Edit Model (this might take a while)'
