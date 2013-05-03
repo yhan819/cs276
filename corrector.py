@@ -14,9 +14,9 @@ pe1 = 0.01
 pqisr = 0.95
 #interpolation lambda
 lamb = 0.2
-jac = 0.7
+mu = 1
 
-cache = {}
+lenless = 0
 
 def unserialize_data(fname):
   with open(fname, 'rb') as f:
@@ -48,7 +48,6 @@ def get_1edit_word(data, word):
   ans = []
   ans.append(word)
   
-  
   for i in range(0,len(word)):
     #insertion
     for a in alphabet:
@@ -65,27 +64,40 @@ def get_1edit_word(data, word):
       trans = word[0:i] + word[i+1] + word[i] + word[i+1:]
       ans.append(trans)
   
-  rst = []
-  for s in ans:
-    words = s.split()
-    add = True
-    for w in words:
-      if w not in uni_dict:
-        add = False
-    if add:
-      rst.append(s)
+  return ans
 
-  return rst
 
 def generate_cand(data, query):
   uni_dict = data[1]
   bi_dict = data[2]
-  '''
-  look at bigram, if it doesn't exist, generate 1-edit words
-  '''
-  cand = []
-  rst = get_1edit_word(data, query)
+  ans = get_1edit_word(data, query)
+  print >> sys.stderr, "len " + str(len(ans))
   
+  rst = []
+  one_wrong = []
+  for s in ans:
+    words = s.split()
+    add = True
+    num_wrong = 0
+    for w in words:
+      if w not in uni_dict:
+        num_wrong += 1
+        add = False
+    if add:
+      rst.append((s,1))
+    if num_wrong == 1:
+      one_wrong.append(s)
+  if len(rst) < 10:
+    for o in one_wrong:
+      new_r = get_1edit_word(data, o)
+    for n in new_r:
+      words = s.split()
+      add = True
+      for w in words:
+        add = False
+      if add:
+        rst.append((n,2))
+
   return rst
 
 def get_pq(data, candidate):
@@ -105,11 +117,11 @@ def get_pq(data, candidate):
   return score   
   
 
-def get_prq_uniform(cand, query):
+def get_prq_uniform(cand, query, d):
   if cand == query:
     return math.log(pqisr)
   else:
-    return (len(cand) - 1) * math.log(1 - pe1) + math.log(pe1)
+    return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
 
 def get_best_cand(data, query, candidates, uniform):
   num_term = data[0]
@@ -121,15 +133,15 @@ def get_best_cand(data, query, candidates, uniform):
   for c in candidates:
     #print >> sys.stderr, c
     if uniform:
-      prq = get_prq_uniform(c, query)
-      pq = get_pq(data, c)
+      prq = get_prq_uniform(c[0], query, c[1])
+      pq = get_pq(data, c[0])
       if pq == 0:
         score = 0
       else:
-        score = prq + pq
+        score = prq + mu * pq
       if score > max_score:
         max_score = score
-        result = c
+        result = c[0]
       #print score
   return result
   
@@ -144,8 +156,10 @@ def correct_uniform(data, queries, gold, google):
     print >> sys.stderr, i
     candidates = generate_cand(data, queries[i])   
     cand = get_best_cand(data, queries[i], candidates, True)
+    print >> sys.stdout, cand
     if cand == gold[i]:
       num_cor += 1
+      print >> sys.stderr, "correct"
   
   print >> sys.stderr, num_cor
   print >> sys.stderr, float(num_cor) / len(gold)
