@@ -11,7 +11,7 @@ alphabet = "abcdefghijklmnopqrstuvwxyz0123546789&$+_' "
 
 #assumed probability of typo in uniform edit
 pe1 = 0.01
-pqisr = 0.90
+pqisr = 0.95
 #interpolation lambda
 lamb = 0.2
 mu = 1
