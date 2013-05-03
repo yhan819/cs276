@@ -83,15 +83,25 @@ def read_edit1s(edit1s_loc):
     # the .rstrip() is needed to remove the \n that is stupidly included in the line
     edit1s = [ line.rstrip().split('\t') for line in f if line.rstrip() ]
     for x in range(0, len(edit1s)):
+      print >> sys.stderr, x
       misspell = edit1s[x][0]
       correct = edit1s[x][1]
+      if "$" not in uniletters_count:
+        uniletters_count["$"] = 1
+      else:
+        uniletters_count["$"] += 1
       for i in range(0, len(correct)):
-        if correct[i] in uniletters_count.keys():
+        if i == 0:
+          if "$" + correct[i] not in biletters_count:
+            biletters_count["$" + correct[i]] = 1
+          else:
+            biletters_count["$" + correct[i]] += 1
+        if correct[i] in uniletters_count:
           uniletters_count[correct[i]] = uniletters_count[correct[i]] + 1
         else:
           uniletters_count[correct[i]] = 1 
         if i != len(correct) -1:
-          if correct[i:i+2] in biletters_count.keys():
+          if correct[i:i+2] in biletters_count:
             biletters_count[correct[i:i+2]] = biletters_count[correct[i:i+2]] + 1
           else:
             biletters_count[correct[i:i+2]] = 1
@@ -99,20 +109,20 @@ def read_edit1s(edit1s_loc):
       if (misspell != correct): 
         diff = find_difference(misspell, correct)
         if len(misspell) != len(correct):
-          # INSERT
-          if len(misspell)+1 == len(correct):
-            val = ("INS", diff[1], diff[2]) 
           # DELETE
+          if len(misspell)+1 == len(correct):
+            val = ("DEL", diff[2], diff[1]) 
+          # INSERT
           elif len(misspell) == len(correct)+1:
-            val = ("DEL", diff[0], diff[2])
+            val = ("INS", diff[2], diff[0])
         else:
           # SUBSTITUTE
           if misspell[0:diff[3]]+diff[1]+misspell[diff[3]+1:] == correct:
-            val = ("SUBS", diff[0], diff[1])
+            val = ("SUBS", diff[1], diff[0])
           # TRANSPOSE
           elif misspell[0:diff[3]]+misspell[diff[3]+1]+misspell[diff[3]] == correct:
-            val = ("TRANS", diff[0], diff[1])
-      if val in edit_map.keys():
+            val = ("TRANS", diff[1], correct[diff[3]+1])
+      if val in edit_map:
         edit_map[val] = edit_map[val] + 1
       else:
         edit_map[val] = 1
@@ -131,7 +141,7 @@ if __name__ == '__main__':
   if len(sys.argv) == 3:
     edit1s_loc = sys.argv[2]
     corpus_loc = sys.argv[1]
-    scan_corpus(corpus_loc)
+    #scan_corpus(corpus_loc)
     read_edit1s(edit1s_loc)
   elif len(sys.argv) == 4:
     edit1s_loc = sys.argv[3]

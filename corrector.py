@@ -46,30 +46,46 @@ def read_query_data(qry_file):
 def get_1edit_word(data, word):
   uni_dict = data[1]
   ans = []
-  ans.append((word,""))
+  ans.append((word,"NONE"))
   
   for i in range(0,len(word)):
     #insertion
     for a in alphabet:
-      ins = word[0:i] + a + word[i:]
-      if i-1 < 0:
-        ans.append((ins,"del$" + a))
+      if a != " ":
+        ins = word[0:i] + a + word[i:]
+        if i-1 < 0:
+          ans.append((ins,("DEL","$", a)))
+        else:
+          ans.append((ins,("DEL",word[i-1],a)))
+        #substitution
+        if a != word[i]:
+          subs = word[0:i] + a + word[i+1:]
+          ans.append((subs, ("SUBS", a, word[i]))) 
       else:
-        ans.append((ins,"del" + word[i-1] + a))
-      #substitution
-      if a != word[i]:
-        subs = word[0:i] + a + word[i+1:]
-        ans.append((subs, "sub" + a + word[i])) 
+        if i > 0 and i < (len(word) - 1) and word[i+1] != " " and word[i-1] != " ":
+          ins = word[0:i] + a + word[i:]
+          if i-1 < 0:
+            ans.append((ins,("DEL","$", a)))
+          elif word[i] != " ":
+            ans.append((ins,("DEL",word[i-1],a)))
+          #substitution
+          if a != word[i]:
+            subs = word[0:i] + a + word[i+1:]
+            ans.append((subs, ("SUBS", a, word[i]))) 
     #deletion
     dele = word[0:i] + word[i+1:]
     if i-1<0:
-      ans.append((dele,"ins$" + word[0]))
+      ans.append((dele,("INS","$",word[0])))
     else:
-      ans.append((dele,"ins" + word[i-1] + word[i]))
+      ans.append((dele,("INS",word[i-1],word[i])))
     if i < len(word) - 1:
       trans = word[0:i] + word[i+1] + word[i] + word[i+1:]
-      ans.append((trans,"trans" + word[i+1] + word[i]))
-  
+      ans.append((trans,("TRANS", word[i+1], word[i])))
+    '''
+    for a in alphabet:
+      ins = word + a
+      ans.append((ins,("DEL",word[len(word)-1],a)))
+    '''
   return ans
 
 
@@ -131,12 +147,59 @@ def get_prq_uniform(cand, query, d):
   else:
     return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
 
-def get_prq_empirical(cand, query, d):
+def get_prq_empirical(cand, query, edit, data):
   if cand == query:
-    return len(cand) * math.log(pqisr)
+    return math.log(pqisr)
   else:
+    unilet_cnt = data[3]
+    bilet_cnt = data[4]
+    edits = data[5]
+    score = 0
+    numwrong = 0
+    
+    
+    for e in edit:
+      numwrong += 1
+      if e == "NONE":
+        numwrong -= 1
+        pass
+      elif e[0] == "DEL":
+        if e in edits:
+          score += math.log(edits[e]+1)   
+          score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+        else:
+          score += math.log(0.01)
+          if e[1]+e[2] not in bilet_cnt:
+            score -= math.log(1 + len(alphabet) * len(alphabet))
+          else:  
+            score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+      elif e[0] == "INS":
+        if e in edits:
+          score += math.log(edits[e]+1)   
+          score -= math.log(unilet_cnt[e[1]] * len(alphabet))
+        else:
+          score += math.log(0.01)
+          score -= math.log(unilet_cnt[e[1]] * len(alphabet))
+      elif e[0] == "SUBS":
+        if e in edits:
+          score += math.log(edits[e]+1)   
+          score -= math.log(unilet_cnt[e[1]] * len(alphabet))
+        else:
+          score += math.log(0.01)
+          score -= math.log(unilet_cnt[e[1]] * len(alphabet))
+      elif e[0] == "TRANS":
+        if e in edits:
+          score += math.log(edits[e]+1)   
+          score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+        else:
+          score += math.log(0.01)
+          if e[1]+e[2] not in bilet_cnt:
+            score -= math.log(1 + len(alphabet) * len(alphabet))
+          else:  
+            score -= math.log(bilet_cnt[e[1]+e[2]] + len(alphabet) * len(alphabet))
+        
     #return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
-    return len(d) * math.log(pe1)
+    return score
 
 def get_best_cand(data, query, candidates, uniform):
   num_term = data[0]
@@ -144,24 +207,22 @@ def get_best_cand(data, query, candidates, uniform):
   bi_dict = data[2]
   result = query
 
-  if not uniform:
-    # load more data
-    pass
-  
   max_score = -99999
   for c in candidates:
     #print >> sys.stderr, c
     if uniform:
       prq = get_prq_uniform(c[0], query, len(c[1]))
     else:
-      prq = get_prq_empirical(c[0], query, c[1])
-      pass
+      prq = get_prq_empirical(c[0], query, c[1], data)
     pq = get_pq(data, c[0])
     if pq == 0:
       score = 0
     else:
       score = prq + mu * pq
+    print >> sys.stderr, c
+    print >> sys.stderr, str(score) + " " + str(prq)
     if score > max_score:
+      print >> sys.stderr, "MAX:"
       max_score = score
       result = c[0]
       #print score
@@ -169,7 +230,7 @@ def get_best_cand(data, query, candidates, uniform):
   return result
   
 
-def correct_uniform(data, queries, gold, google, isUniform):
+def correct_queries(data, queries, gold, google, isUniform):
   num_term = data[0]
   uni_dict = data[1]
   bi_dict = data[2]
@@ -201,13 +262,17 @@ if __name__ == '__main__':
   data = unserialize_data("lang_model")
   if lm == "uniform":
     
-    correct_uniform(data, queries, gold, google, True)   
+    correct_queries(data, queries, gold, google, True)   
     
     print >> sys.stderr, len(queries)
   elif lm == "empirical":
     '''
     add more to data
     '''
-    correct_empirical(data, queries, gold, google, False)
+    emp_data = unserialize_data("edit1s_model")
+    data.append(emp_data[0])
+    data.append(emp_data[1])
+    data.append(emp_data[2])
+    correct_queries(data, queries, gold, google, False)
     
 
