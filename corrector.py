@@ -1,12 +1,19 @@
 
 import sys
 import marshal
+import math
 
 queries_loc = 'data/queries.txt'
 gold_loc = 'data/gold.txt'
 google_loc = 'data/google.txt'
 
 alphabet = "abcdefghijklmnopqrstuvwxyz0123546789&$+_' "
+
+#assumed probability of typo in uniform edit
+pe1 = 0.01
+pqisr = 0.95
+#interpolation lambda
+lamb = 0.2
 
 def unserialize_data(fname):
   with open(fname, 'rb') as f:
@@ -79,19 +86,71 @@ def generate_cand(data, query):
   if not fixed:
     cand.append(query)
   return cand
-      
+
+def get_pq(data, candidate):
+  num_term = data[0]
+  uni_dict = data[1]
+  bi_dict = data[2]
+  words = candidate.split()
+  # adding P(w1)
+  if words[0] not in uni_dict:
+    return 0
+  score = math.log(float(uni_dict[words[0]]) / num_term)
+  
+  for i in range(1,len(words)):
+    if (words[i-1],words[i]) in bi_dict:
+      score += math.log(lamb * float(uni_dict[words[i]]) / num_term + (1-lamb)* \
+        float(bi_dict[(words[i-1],words[i])]) / uni_dict[words[i-1]])
+    else:
+      if words[i] not in uni_dict:
+        return 0
+      score += math.log(lamb * float(uni_dict[words[i]]) / num_term)
+  return score   
+  
+
+def get_prq_uniform(cand, query):
+  if cand == query:
+    return math.log(pqisr)
+  else:
+    return (len(cand) - 1) * math.log(1 - pe1) + math.log(pe1)
+
+def get_best_cand(data, query, candidates, uniform):
+  num_term = data[0]
+  uni_dict = data[1]
+  bi_dict = data[2]
+  result = query
+  
+  max_score = -99999
+  for c in candidates:
+    #print >> sys.stderr, c
+    if uniform:
+      prq = get_prq_uniform(c, query)
+      pq = get_pq(data, c)
+      if pq == 0:
+        score = 0
+      else:
+        score = prq + pq
+      if score > max_score:
+        max_score = score
+        result = c
+      #print score
+  return result
+  
 
 def correct_uniform(data, queries, gold, google):
   num_term = data[0]
   uni_dict = data[1]
   bi_dict = data[2]
+  num_cor = 0
   
-  print >> sys.stderr, bi_dict[('mw','tth')]
   for i in range(0, len(queries)):
     candidates = generate_cand(data, queries[i])   
-    for c in candidates:
-      print >> sys.stderr, c
+    cand = get_best_cand(data, queries[i], candidates, True)
+    if cand == gold[i]:
+      num_cor += 1
   
+  print >> sys.stderr, num_cor
+  print >> sys.stderr, float(num_cor) / len(gold)
 
 if __name__ == '__main__':
   print(sys.argv)
