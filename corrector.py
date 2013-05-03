@@ -127,7 +127,7 @@ def get_pq(data, candidate):
 
 def get_prq_uniform(cand, query, d):
   if cand == query:
-    return len(cand) * math.log(pqisr)
+    return math.log(pqisr)
   else:
     return (len(cand) - d) * math.log(1 - pe1) + d * math.log(pe1)
 
