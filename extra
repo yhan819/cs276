@@ -1,0 +1,15 @@
+def build_edit1_model(edit_l):
+  edit_dict = collections.defaultdict(lambda: 0)
+  let_cnt = collections.defaultdict(lambda: 0)
+  bilet_cnt = collections.defaultdict(lambda: 0)
+  for l in edit_l:
+    miss = l[0]
+    cor = l[1]
+    # insertion
+    if len(cor) < len(miss):
+      for i in range(0,len(cor)):
+        let_cnt[cor[i]] += 1
+        if i < len(cor) - 1:
+          bilet_cnt[cor[i] + cor[i+1]] += 1
+        if cor[i] d
+
