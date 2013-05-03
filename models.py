@@ -83,7 +83,6 @@ def read_edit1s(edit1s_loc):
     # the .rstrip() is needed to remove the \n that is stupidly included in the line
     edit1s = [ line.rstrip().split('\t') for line in f if line.rstrip() ]
     for x in range(0, len(edit1s)):
-      print >> sys.stderr, x
       misspell = edit1s[x][0]
       correct = edit1s[x][1]
       if "$" not in uniletters_count:
@@ -133,6 +132,8 @@ def read_edit1s(edit1s_loc):
   data.append(biletters_count)
   data.append(edit_map)
   serialize_data(data, "edit1s_model")
+ 
+  print >> sys.stderr, "done reading"
 
 
 
