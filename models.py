@@ -141,7 +141,7 @@ if __name__ == '__main__':
   if len(sys.argv) == 3:
     edit1s_loc = sys.argv[2]
     corpus_loc = sys.argv[1]
-    #scan_corpus(corpus_loc)
+    scan_corpus(corpus_loc)
     read_edit1s(edit1s_loc)
   elif len(sys.argv) == 4:
     edit1s_loc = sys.argv[3]
